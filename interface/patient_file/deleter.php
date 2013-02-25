@@ -91,28 +91,110 @@ function delete_drug_sales($patient_id, $encounter_id=0) {
   }
 }
 
-// Delete a form's data from its form-specific table.
-//
+/**
+ * Delete a form's data from its form-specific table.
+ */
 function form_delete($formdir, $formid) {
-  $formdir = ($formdir == 'newpatient') ? 'encounter' : $formdir;
-  if (substr($formdir,0,3) == 'LBF') {
-    row_delete("lbf_data", "form_id = '$formid'");
-  }
-  else if ($formdir == 'procedure_order') {
-    $tres = sqlStatement("SELECT procedure_report_id FROM procedure_report " .
-      "WHERE procedure_order_id = ?", array($formid));
-    while ($trow = sqlFetchArray($tres)) {
-      $reportid = 0 + $trow['procedure_report_id'];
-      row_delete("procedure_result", "procedure_report_id = '$reportid'");
-    }
-    row_delete("procedure_report", "procedure_order_id = '$formid'");
-    row_delete("procedure_order_code", "procedure_order_id = '$formid'");
-    row_delete("procedure_order", "procedure_order_id = '$formid'");
-  }
-  else {
-    row_delete("form_$formdir", "id = '$formid'");
-  }
-}
+	/**
+	 * Forms with a variable formdir, but one table. E.g.
+	 * formdir LBF1 = table lbf_data; formdir LBF2 = table lbf_data
+	 *
+	 * [pattern] = [real table name]
+	 */
+	$variableForm = array(
+		'^LBF\d+' => 'lbf_data'
+	);
+
+	/**
+	 * Forms that don't follow the convention of:
+	 * table = form_<formdir>
+	 *
+	 * [formdir] => [real table name]
+	 */
+	$realTables = array(
+		'newpatient' => 'form_encounter',
+	);
+
+	/**
+	 * Tables whose id column is not named 'id' and require an exception
+	 * Key is *not* formdir; most forms have have form_ prefix
+	 *
+	 * [real table name] => [id column name]
+	 */
+	$realIds = array(
+		'form_physical_exam' => 'forms_id',
+		'lbf_data' => 'form_id'
+	);
+
+	switch($formdir):
+		/**
+		 * Delete procedures
+		 */
+		case 'procedure_order':
+			$sql = "
+				SELECT procedure_report_id
+				FROM procedure_report
+				WHERE procedure_order_id = ?
+			";
+			$tres = sqlStatement($sql, array($formid));
+			while ($trow = sqlFetchArray($tres)):
+				$reportid = 0 + $trow['procedure_report_id'];
+				row_delete("procedure_result", "procedure_report_id = '$reportid'");
+			endwhile;
+
+			row_delete("procedure_report", "procedure_order_id = '$formid'");
+			row_delete("procedure_order", "procedure_order_id = '$formid'");
+			break;
+
+		/**
+		 * Delete everything else
+		 */
+		default:
+			/**
+			 * Check for a variable formdir
+			 */
+			foreach ($variableForm as $pattern => $tableName):
+				if (preg_match("/$pattern/", $formdir)):
+					$table = $tableName;
+				endif;
+			endforeach;
+
+			/**
+			 * Check for the real table name
+			 * This is skipped if $table was determined to be variable above
+			 */
+			if (empty($table) && array_key_exists($formdir, $realTables)):
+				$table = $realTables[$formdir];
+			elseif (empty($table)):
+				$table = "form_$formdir";
+			endif;
+
+			/**
+			 * Check for the existence of that table
+			 */
+			$tables = $GLOBALS['adodb']['db'] -> MetaTables();
+			if (in_array($table, $tables) === false):
+				error_log("Table [$table] (formdir [$formdir]) doesn't exist");
+				return false;
+			else:
+				/**
+				 * Search for real id column
+				 */
+				if (array_key_exists($table, $realIds)):
+					$id = $realIds[$table];
+				else:
+					$id = 'id';
+				endif;
+
+				if (! empty($table) && ! empty($id) && ! empty($formid)):
+					row_delete($table, "$id = '$formid'");
+				else:
+					error_log("One of the terms was empty: table [$table] id [$id] formid [$formid]");
+					return false;
+				endif;
+			endif;
+	endswitch;
+} // form_delete()
 
 // Delete a specified document including its associated relations and file.
 //
