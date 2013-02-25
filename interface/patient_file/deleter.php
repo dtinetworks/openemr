@@ -156,6 +156,7 @@ function form_delete($formdir, $formid) {
 			foreach ($variableForm as $pattern => $tableName):
 				if (preg_match("/$pattern/", $formdir)):
 					$table = $tableName;
+					break;
 				endif;
 			endforeach;
 
