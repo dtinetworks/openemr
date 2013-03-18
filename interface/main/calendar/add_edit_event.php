@@ -997,13 +997,13 @@ td { font-size:0.8em; }
         top.restoreSession();
         // (CHEMED) Conditional value selection, because there is no <select> element
         // when making an appointment for a specific provider
-        var s = document.forms[0].form_provider;
+        var s = document.getElementById("form_provider");
         var f = document.forms[0].facility;
         <?php if ($userid != 0) { ?>
-            s = document.forms[0].form_provider.value;
+            s = document.getElementById("form_provider").value;
             f = document.forms[0].facility.value;
         <?php } else {?>
-            s = document.forms[0].form_provider.options[s.selectedIndex].value;
+            s = document.getElementById("form_provider").options[s.selectedIndex].value;
             f = document.forms[0].facility.options[f.selectedIndex].value;
         <?php }?>
         var c = document.forms[0].form_category;
@@ -1257,7 +1257,7 @@ if  ($GLOBALS['select_multi_providers']) {
     }
     
     // build the selection tool
-    echo "<select name='form_provider[]' style='width:100%' multiple='multiple' size='5' >";
+    echo "<select id='form_provider' name='form_provider[]' style='width:100%' multiple='multiple' size='5' >";
     
     while ($urow = sqlFetchArray($ures)) {
         echo "    <option value='" . attr($urow['id']) . "'";
@@ -1328,7 +1328,7 @@ if  ($GLOBALS['select_multi_providers']) {
       // if we clicked on a provider's schedule to add the event, use THAT.
       if ($userid) $defaultProvider = $userid;
     }
-    echo "<select name='form_provider' style='width:100%' />";
+    echo "<select id='form_provider' name='form_provider' style='width:100%' />";
     while ($urow = sqlFetchArray($ures)) {
       echo "    <option value='" . attr($urow['id']) . "'";
       if ($urow['id'] == $defaultProvider) echo " selected";
